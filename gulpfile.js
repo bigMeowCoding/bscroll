@@ -1,11 +1,12 @@
 const gulp = require("gulp");
-const  webpack = require("gulp-webpack");
+const webpack = require("gulp-webpack");
 const replace = require("gulp-replace");
 const version = require("./package.json").version;
-
+const browserSync = require("browser-sync");
+const reload = browserSync.reload;
 const dest = "build";
 const path = {
-    js: "src/js/**/*.js",
+    js: "src/**/*.js",
 };
 const webpackConfig = {
     entry: "./src/bscroll.js",
@@ -26,4 +27,23 @@ gulp.task("script", function () {
 gulp.task("compile", ["script"]);
 gulp.task("default", ["clean"], () => {
     gulp.start("compile");
+});
+gulp.task("connect", ["compile"], function () {
+    browserSync({
+        notify: false,
+        port: 9000,
+        server: {
+            baseDir: ["."],
+        },
+        startPath: "demo/index.html",
+    });
+
+    // watch for changes
+    gulp.watch(path.js, function () {
+        gulp.start("script");
+        reload();
+    });
+});
+gulp.task("serve", ["clean"], function () {
+    gulp.start("connect");
 });
