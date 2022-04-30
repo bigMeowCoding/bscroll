@@ -1,5 +1,6 @@
 const _ = require("./util/index.js");
-const TOUCH_EVENT = 1(function (window, document) {
+const TOUCH_EVENT = 1;
+(function (window, document) {
     function BScroll(el, options) {
         this.wrapper = typeof el === "string" ? document.querySelector(el) : el;
         this.scroller = this.wrapper.children[0];
@@ -129,7 +130,48 @@ const TOUCH_EVENT = 1(function (window, document) {
             }
             eventOperation(this.scroller, _.style.transitionEnd, this);
         },
-        refresh() {},
+        refresh() {
+            const rf = this.wrapper.offsetHeight;
+            this.wrapperWidth = this.wrapper.clientWidth;
+            this.wrapperHeight = this.wrapper.clientHeight;
+
+            this.scrollerWidth = this.scroller.clientWidth;
+            this.scrollerHeight = this.scroller.clientHeight;
+
+            this.maxScrollX = this.wrapperWidth - this.scrollerWidth;
+            this.maxScrollY = this.wrapperHeight - this.scrollerHeight;
+
+            this.hasHorizontalScroll =
+                this.options.scrollX && this.maxScrollX < 0;
+            this.hasVerticalScroll =
+                this.options.scrollY && this.maxScrollY < 0;
+
+            if (!this.hasHorizontalScroll) {
+                this.maxScrollX = 0;
+                this.scrollerWidth = this.wrapperWidth;
+            }
+
+            if (!this.hasVerticalScroll) {
+                this.maxScrollY = 0;
+                this.scrollerHeight = this.wrapperHeight;
+            }
+
+            this.endTime = 0;
+            this.wrapperOffset = _.offset(this.wrapper);
+
+            this._trigger("refresh");
+
+            this.resetPosition();
+        },
+        _trigger(type) {
+            const events = this._events[type];
+            if (!events) {
+                return;
+            }
+            for (const event of events) {
+                event.apply(this, [].slice.call(arguments, 1));
+            }
+        },
         scrollTo() {},
         enable() {
             this.enabled = true;
@@ -209,17 +251,49 @@ const TOUCH_EVENT = 1(function (window, document) {
             //this.directionX = 0;
             //this.directionY = 0;
             this.directionLocked = 0;
+            this._transitionTime();
         },
         _move() {},
         _end() {},
-        _resize() {},
-        _transitionEnd() {},
+        _resize() {
+            const me = this;
+            clearTimeout(this.resizeTimeout);
+            this.resizeTimeout = setTimeout(function () {
+                me.refresh();
+            }, this.options.resizePolling);
+        },
+        _transitionEnd(e) {
+            if (e.target !== this.scroller || !this.isIntransition) {
+                return;
+            }
+            this._transitionTime();
+        },
         _transitionTime(time) {
             time = time || 0;
             this.scrollerStyle[_.style.transitionDuration] = time + "ms";
             if (!time && _.isBadAndroid) {
                 this.scrollerStyle[_.style.transitionDuration] = "0.001s";
             }
+        },
+        resetPosition(time, easeing) {
+            time = time || 0;
+            let x = this.x;
+            let y = this.y;
+            if (!this.hasVerticalScroll || y > 0) {
+                y = 0;
+            } else if (y < this.maxScrollY) {
+                y = this.maxScrollY;
+            }
+            if (!this.hasHorizontalScroll || x > 0) {
+                x = 0;
+            } else if (x < this.maxScrollX) {
+                x = this.maxScrollX;
+            }
+            if (x === this.x && y === this.y) {
+                return false;
+            }
+            this.scrollTo(x, y, time, easeing);
+            return true;
         },
     };
 

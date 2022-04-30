@@ -57,12 +57,28 @@ _.extend = function (target, obj) {
         target[key] = obj[key];
     }
 };
+_.offset = function (el) {
+    let left = 0;
+    let top = 0;
+
+    while (el) {
+        left -= el.offsetLeft;
+        top -= el.offsetTop;
+        el = el.offsetParent;
+    }
+
+    return {
+        left: left,
+        top: top,
+    };
+};
 _.addEvent = function (el, type, fn, capture) {
     el.addEventListener(type, fn, !!capture);
 };
 _.removeEvent = function (el, type, fn, capture) {
     el.removeEventListener(type, fn, !!capture);
 };
+
 _.extend(_, {
     hasTransform: transform !== false,
     hasPerspective: prefixStyle("perspective") in elementStyle,
