@@ -32,6 +32,19 @@ function prefixStyle(style) {
 }
 
 const transform = prefixStyle("transform");
+_.preventDefaultException = function (el, exceptions) {
+    for (var i in exceptions) {
+        if (exceptions[i].test(el)) {
+            return true;
+        }
+    }
+
+    return false;
+};
+_.isBadAndroid =
+    /Android /.test(window.navigator.appVersion) &&
+    !/Chrome\/\d/.test(window.navigator.appVersion);
+
 _.prefixPointerEvent = function (pointerEvent) {
     return window.MSPointerEvent
         ? "MSPointer" +
