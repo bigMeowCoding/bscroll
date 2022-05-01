@@ -172,13 +172,39 @@ const TOUCH_EVENT = 1;
                 event.apply(this, [].slice.call(arguments, 1));
             }
         },
-        scrollTo() {},
+        scrollTo(x, y, time, ease) {
+            ease = ease || _.ease.bounce;
+            this.isInTransition = this.options.useTransition && time > 0;
+            if (!time || (this.options.useTransition && ease.style)) {
+                this._transitionTimingFunction(ease.style);
+                this._transitionTime(time);
+                this._translate(x, y);
+            }
+        },
         enable() {
             this.enabled = true;
         },
         disable() {
             this.enabled = false;
         },
+        _transitionTimingFunction: function (easing) {
+            this.scrollerStyle[_.style.transitionTimingFunction] = easing;
+        },
+        _translate(x, y) {
+            if (this.options.useTransform) {
+                this.scrollerStyle[_.style.transform] =
+                    "translate(" + x + "px," + y + "px)" + this.translateZ;
+            } else {
+                x = Math.round(x);
+                y = Math.round(y);
+                this.scrollerStyle.left = x + "px";
+                this.scrollerStyle.top = y + "px";
+            }
+
+            this.x = x;
+            this.y = y;
+        },
+        _animate(destX, destY, duration, easingFn) {},
         handleEvent: function (e) {
             switch (e.type) {
                 case "touchstart":
@@ -248,10 +274,24 @@ const TOUCH_EVENT = 1;
             this.moved = false;
             this.distX = 0;
             this.distY = 0;
-            //this.directionX = 0;
-            //this.directionY = 0;
             this.directionLocked = 0;
             this._transitionTime();
+            this.startTime = +new Date();
+            if (this.options.useTransition && this.isInTransition) {
+                this.isInTransition = false;
+                const pos = this.getComputedPosition();
+                this._translate(Math.round(pos.x), Math.round(pos.y));
+                this._trigger("scrollEnd");
+            } else if (!this.options.useTransition && this.isAnimating) {
+                this.isAnimating = false;
+                this._trigger("scrollEnd");
+            }
+            const point = e.touches ? e.touches[0] : e;
+            this.startX = this.x;
+            this.startY = this.y;
+            this.pointX = point.pageX;
+            this.pointY = point.pageY;
+            this._trigger("beforeScrollStart");
         },
         _move() {},
         _end() {},
@@ -261,6 +301,25 @@ const TOUCH_EVENT = 1;
             this.resizeTimeout = setTimeout(function () {
                 me.refresh();
             }, this.options.resizePolling);
+        },
+        getComputedPosition: function () {
+            let matrix = window.getComputedStyle(this.scroller, null);
+            let x;
+            let y;
+
+            if (this.options.useTransform) {
+                matrix = matrix[_.style.transform].split(")")[0].split(", ");
+                x = +(matrix[12] || matrix[4]);
+                y = +(matrix[13] || matrix[5]);
+            } else {
+                x = +matrix.left.replace(/[^-\d.]/g, "");
+                y = +matrix.top.replace(/[^-\d.]/g, "");
+            }
+
+            return {
+                x: x,
+                y: y,
+            };
         },
         _transitionEnd(e) {
             if (e.target !== this.scroller || !this.isIntransition) {
