@@ -69,7 +69,6 @@ const TOUCH_EVENT = 1;
         if (this.options.tap === true) {
             this.options.tap = "tap";
         }
-        console.log(this.options);
         this._init();
 
         this.refresh();
@@ -163,6 +162,174 @@ const TOUCH_EVENT = 1;
 
             this.resetPosition();
         },
+        _start(e) {
+            console.log("_start", e);
+            const eventType = _.eventType[e.type];
+            if (eventType !== TOUCH_EVENT) {
+                if (e.button !== 0) {
+                    return;
+                }
+            }
+            if (
+                !this.enabled ||
+                (this.initiated && eventType !== this.initiated)
+            ) {
+                return;
+            }
+            this.initiated = eventType;
+            if (
+                this.options.preventDefault &&
+                !_.isBadAndroid &&
+                !_.preventDefaultException(
+                    e.target,
+                    this.options.preventDefaultException
+                )
+            ) {
+                e.preventDefault();
+            }
+            this.moved = false;
+            this.distX = 0;
+            this.distY = 0;
+            this.directionLocked = 0;
+            this._transitionTime();
+            this.startTime = +new Date();
+            if (this.options.useTransition && this.isInTransition) {
+                this.isInTransition = false;
+                const pos = this.getComputedPosition();
+                this._translate(Math.round(pos.x), Math.round(pos.y));
+                this._trigger("scrollEnd");
+            } else if (!this.options.useTransition && this.isAnimating) {
+                this.isAnimating = false;
+                this._trigger("scrollEnd");
+            }
+            const point = e.touches ? e.touches[0] : e;
+            this.startX = this.x;
+            this.startY = this.y;
+            this.pointX = point.pageX;
+            this.pointY = point.pageY;
+            this._trigger("beforeScrollStart");
+        },
+        _move(e) {
+            console.log("move======", e);
+
+            if (!this.enabled || _.eventType[e.type] !== this.initiated) return;
+
+            if (this.options.preventDefault) {
+                //TODO increase Android performance
+                e.preventDefault();
+            }
+            const point = e.touches ? e.touches[0] : e;
+            let deltaX = point.pageX - this.pointX;
+            let deltaY = point.pageY - this.pointY;
+
+            this.pointX = point.pageX;
+            this.pointY = point.pageY;
+
+            this.distX += deltaX;
+            this.distY += deltaY;
+
+            const absDistX = Math.abs(this.distX);
+            const absDistY = Math.abs(this.distY);
+            const timestamp = +new Date();
+            if (
+                timestamp - this.endTime > 300 &&
+                absDistX < 10 &&
+                absDistY < 10
+            ) {
+                return;
+            }
+            if (!this.directionLocked && !this.options.freeScroll) {
+                if (absDistX > absDistY + this.options.directionLockThreshold) {
+                    this.directionLocked = "h"; // lock horizontally
+                } else if (
+                    absDistY >=
+                    absDistX + this.options.directionLockThreshold
+                ) {
+                    this.directionLocked = "v"; // lock vertically
+                } else {
+                    this.directionLocked = "n"; // no lock
+                }
+            }
+            if (this.directionLocked === "h") {
+                if (this.options.eventPassthrough === "vertical") {
+                    e.preventDefault();
+                } else if (this.options.eventPassthrough === "horizontal") {
+                    this.initiated = false;
+                    return;
+                }
+
+                deltaY = 0;
+            } else if (this.directionLocked === "v") {
+                if (this.options.eventPassthrough === "horizontal") {
+                    e.preventDefault();
+                } else if (this.options.eventPassthrough === "vertical") {
+                    this.initiated = false;
+                    return;
+                }
+                deltaX = 0;
+            }
+            deltaX = this.hasHorizontalScroll ? deltaX : 0;
+            deltaY = this.hasVerticalScroll ? deltaY : 0;
+
+            let newX = this.x + deltaX;
+            let newY = this.y + deltaY;
+
+            if (newX > 0 || newX < this.maxScrollX) {
+                newX = this.x + deltaX / 3;
+            }
+            if (newY > 0 || newY < this.maxScrollY) {
+                console.log('sssss')
+                newY = this.y + deltaY / 3;
+            }
+
+            if (!this.moved) {
+                this.moved = true;
+                this._trigger("scrollStart");
+            }
+            console.log(newY, newX);
+            this._translate(newX, newY);
+            if (timestamp - this.startTime > 300) {
+                this.startTime = timestamp;
+                this.startX = this.x;
+                this.startY = this.y;
+            }
+            if (this.directionLocked === "h") {
+                if (
+                    this.pointX > document.documentElement.clientWidth - 10 ||
+                    this.pointX < 10
+                ) {
+                    this._end(e);
+                }
+            }
+            if (this.directionLocked === "v") {
+                if (
+                    this.pointY > document.documentElement.clientHeight - 10 ||
+                    this.pointY < 10
+                ) {
+                    console.log("dddd");
+                    this._end(e);
+                }
+            }
+        },
+        _end(e) {
+            console.log("end=====", e);
+            if (!this.enabled || _.eventType[e.type] !== this.initiated) {
+                return;
+            }
+            this.initiated = false;
+            if (
+                this.options.preventDefault &&
+                !_.preventDefaultException(
+                    e.target,
+                    this.options.preventDefaultException
+                )
+            ) {
+                e.preventDefault();
+            }
+            if (this.resetPosition(this.options.bounceTime, _.ease.bounce)) {
+                return;
+            }
+        },
         _trigger(type) {
             const events = this._events[type];
             if (!events) {
@@ -247,54 +414,6 @@ const TOUCH_EVENT = 1;
                     break;
             }
         },
-        _start(e) {
-            const eventType = _.eventType[e.type];
-            if (eventType !== TOUCH_EVENT) {
-                if (e.button !== 0) {
-                    return;
-                }
-            }
-            if (
-                !this.enabled ||
-                (this.initiated && eventType !== this.initiated)
-            ) {
-                return;
-            }
-            this.initiate = eventType;
-            if (
-                this.options.preventDefault &&
-                !_.isBadAndroid &&
-                !_.preventDefaultException(
-                    e.target,
-                    this.options.preventDefaultException
-                )
-            ) {
-                e.preventDefault();
-            }
-            this.moved = false;
-            this.distX = 0;
-            this.distY = 0;
-            this.directionLocked = 0;
-            this._transitionTime();
-            this.startTime = +new Date();
-            if (this.options.useTransition && this.isInTransition) {
-                this.isInTransition = false;
-                const pos = this.getComputedPosition();
-                this._translate(Math.round(pos.x), Math.round(pos.y));
-                this._trigger("scrollEnd");
-            } else if (!this.options.useTransition && this.isAnimating) {
-                this.isAnimating = false;
-                this._trigger("scrollEnd");
-            }
-            const point = e.touches ? e.touches[0] : e;
-            this.startX = this.x;
-            this.startY = this.y;
-            this.pointX = point.pageX;
-            this.pointY = point.pageY;
-            this._trigger("beforeScrollStart");
-        },
-        _move() {},
-        _end() {},
         _resize() {
             const me = this;
             clearTimeout(this.resizeTimeout);
@@ -326,6 +445,10 @@ const TOUCH_EVENT = 1;
                 return;
             }
             this._transitionTime();
+            if (!this.resetPosition(this.options.bounceTime, _.ease.bounce)) {
+                this.isInTransition = false;
+                this._trigger("scrollEnd");
+            }
         },
         _transitionTime(time) {
             time = time || 0;
