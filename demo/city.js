@@ -31,7 +31,7 @@ define(['./cityData', '../build/bscroll', './handlebars'], function (cityData, B
 
 		scroll = new BScroll(cityWrapper);
 
-		// scroll.scrollTo(0, 0);
+		scroll.scrollTo(0, 0);
 	}
 
 	function initShortCut() {
@@ -74,7 +74,7 @@ define(['./cityData', '../build/bscroll', './handlebars'], function (cityData, B
 			touch.y1 = firstTouch.pageY;
 			touch.anchor = anchor;
 
-			// scrollTo(anchor);
+			scrollTo(anchor);
 
 		});
 
@@ -89,7 +89,9 @@ define(['./cityData', '../build/bscroll', './handlebars'], function (cityData, B
 
 			var anchor = shortcutList[shortcutList.indexOf(touch.anchor) + delta];
 
-			// scrollTo(anchor);
+			scrollTo(anchor);
+
+			e.preventDefault();
 			e.stopPropagation();
 
 		});
@@ -100,7 +102,7 @@ define(['./cityData', '../build/bscroll', './handlebars'], function (cityData, B
 			var y = Math.min(0, Math.max(maxScrollY, anchorMap[anchor]));
 
 			if (typeof y !== 'undefined') {
-				// scroll.scrollTo(0, y);
+				scroll.scrollTo(0, y);
 			}
 		}
 	}

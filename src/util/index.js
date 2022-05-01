@@ -4,13 +4,14 @@ const elementStyle = document.createElement("div").style;
 const TOUCH_EVENT = 1;
 const MOUSE_EVENT = 2;
 const POINTER_EVENT = 3;
-const vendor = (function () {
-    const transformNames = {
-        standard: "transform",
+
+var vendor = (function () {
+    var transformNames = {
         webkit: "webkitTransform",
         Moz: "MozTransform",
         O: "OTransform",
         ms: "msTransform",
+        standard: "transform",
     };
 
     for (var key in transformNames) {
@@ -40,6 +41,24 @@ _.preventDefaultException = function (el, exceptions) {
     }
 
     return false;
+};
+_.hasClass = function (el, className) {
+    var reg = new RegExp("(^|\\s)" + className + "(\\s|$)");
+    return reg.test(el.className);
+};
+_.addClass = function (el, className) {
+    if (_.hasClass(el, className)) return;
+
+    var newClass = el.className.split(" ");
+    newClass.push(className);
+    el.className = newClass.join(" ");
+};
+
+_.removeClass = function (el, className) {
+    if (!_.hasClass(el, className)) return;
+
+    var reg = new RegExp("(^|\\s)" + className + "(\\s|$)", "g");
+    el.className = el.className.replace(reg, " ");
 };
 _.tap = function (e, eventName) {
     var ev = document.createEvent("Event");

@@ -296,21 +296,26 @@ const TOUCH_EVENT = 1;
                 this.startX = this.x;
                 this.startY = this.y;
             }
-            if (this.directionLocked === "h") {
-                if (
-                    this.pointX > document.documentElement.clientWidth - 10 ||
-                    this.pointX < 10
-                ) {
-                    this._end(e);
-                }
-            }
-            if (this.directionLocked === "v") {
-                if (
-                    this.pointY > document.documentElement.clientHeight - 10 ||
-                    this.pointY < 10
-                ) {
-                    this._end(e);
-                }
+
+            const scrollLeft =
+                document.documentElement.scrollLeft ||
+                window.pageXOffset ||
+                document.body.scrollLeft;
+            const scrollTop =
+                document.documentElement.scrollTop ||
+                window.pageYOffset ||
+                document.body.scrollTop;
+
+            const pX = this.pointX - scrollLeft;
+            const pY = this.pointY - scrollTop;
+
+            if (
+                pX > document.documentElement.clientWidth - 10 ||
+                pX < 10 ||
+                pY < 10 ||
+                pY > document.documentElement.clientHeight - 10
+            ) {
+                this._end(e);
             }
         },
         _end(e) {
