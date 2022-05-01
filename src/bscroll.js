@@ -278,7 +278,6 @@ const TOUCH_EVENT = 1;
                 newX = this.x + deltaX / 3;
             }
             if (newY > 0 || newY < this.maxScrollY) {
-                console.log('sssss')
                 newY = this.y + deltaY / 3;
             }
 
@@ -286,7 +285,6 @@ const TOUCH_EVENT = 1;
                 this.moved = true;
                 this._trigger("scrollStart");
             }
-            console.log(newY, newX);
             this._translate(newX, newY);
             if (timestamp - this.startTime > 300) {
                 this.startTime = timestamp;
@@ -306,7 +304,6 @@ const TOUCH_EVENT = 1;
                     this.pointY > document.documentElement.clientHeight - 10 ||
                     this.pointY < 10
                 ) {
-                    console.log("dddd");
                     this._end(e);
                 }
             }
@@ -329,6 +326,79 @@ const TOUCH_EVENT = 1;
             if (this.resetPosition(this.options.bounceTime, _.ease.bounce)) {
                 return;
             }
+            this.isInTransition = false;
+            this.endTime = +new Date();
+            let newX = Math.round(this.x);
+            let newY = Math.round(this.y);
+            this.scrollTo(newX, newY);
+            if (!this.moved) {
+                if (this.options.tap) {
+                    _.tap(e, this.options.tap);
+                }
+
+                if (this.options.click) {
+                    _.click(e);
+                }
+
+                this._trigger("scrollCancel");
+                return;
+            }
+            const duration = this.endTime - this.startTime;
+            const absDistX = Math.abs(newX - this.startX);
+            const absDistY = Math.abs(newY - this.startY);
+            //fastclick
+            if (
+                this._events.flick &&
+                duration < 200 &&
+                absDistX < 10 &&
+                absDistY < 10
+            ) {
+                this._trigger("flick");
+                return;
+            }
+            let time = 0;
+            // start momentum animation if needed
+            if (this.options.momentum && duration < 300) {
+                var momentumX = this.hasHorizontalScroll
+                    ? _.momentum(
+                          this.x,
+                          this.startX,
+                          duration,
+                          this.maxScrollX,
+                          this.options.bounce ? this.wrapperWidth : 0,
+                          this.options
+                      )
+                    : { destination: newX, duration: 0 };
+                var momentumY = this.hasVerticalScroll
+                    ? _.momentum(
+                          this.y,
+                          this.startY,
+                          duration,
+                          this.maxScrollY,
+                          this.options.bounce ? this.wrapperHeight : 0,
+                          this.options
+                      )
+                    : { destination: newY, duration: 0 };
+                newX = momentumX.destination;
+                newY = momentumY.destination;
+                time = Math.max(momentumX.duration, momentumY.duration);
+                this.isInTransition = 1;
+            }
+            let easing = _.ease.swip;
+            if (newX !== this.x || newY !== this.y) {
+                // change easing function when scroller goes out of the boundaries
+                if (
+                    newX > 0 ||
+                    newX < this.maxScrollX ||
+                    newY > 0 ||
+                    newY < this.maxScrollY
+                ) {
+                    easing = _.ease.swipeBounce;
+                }
+                this.scrollTo(newX, newY, time, easing);
+                return;
+            }
+            this._trigger("scrollEnd");
         },
         _trigger(type) {
             const events = this._events[type];

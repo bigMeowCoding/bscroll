@@ -41,6 +41,70 @@ _.preventDefaultException = function (el, exceptions) {
 
     return false;
 };
+_.tap = function (e, eventName) {
+    var ev = document.createEvent("Event");
+    ev.initEvent(eventName, true, true);
+    ev.pageX = e.pageX;
+    ev.pageY = e.pageY;
+    e.target.dispatchEvent(ev);
+};
+_.momentum = function (
+    current,
+    start,
+    time,
+    lowerMargin,
+    wrapperSize,
+    options
+) {
+    var distance = current - start;
+    var speed = Math.abs(distance) / time;
+
+    var deceleration = options.deceleration || 0.001;
+    var duration = options.swipeTime || 2500;
+
+    var destination =
+        current + (speed / deceleration) * (distance < 0 ? -1 : 1);
+
+    if (destination < lowerMargin) {
+        destination = wrapperSize
+            ? lowerMargin - (wrapperSize / 2.5) * (speed / 8)
+            : lowerMargin;
+        duration =
+            (options.swipeBounceTime || 1000) - (options.bounceTime || 400);
+        //distance = Math.abs(destination - current);
+    } else if (destination > 0) {
+        destination = wrapperSize ? (wrapperSize / 2.5) * (speed / 8) : 0;
+        duration =
+            (options.swipeBounceTime || 1000) - (options.bounceTime || 400);
+        //distance = Math.abs(current) + destination;
+    }
+
+    return {
+        destination: Math.round(destination),
+        duration: duration,
+    };
+};
+_.click = function (e) {
+    var target = e.target;
+
+    if (!/(SELECT|INPUT|TEXTAREA)/i.test(target.tagName)) {
+        var ev = new MouseEvent("click", {
+            bubbles: true,
+            cancelable: true,
+            view: e.view,
+            screenX: target.screenX,
+            screenY: target.screenY,
+            clientX: target.clientX,
+            clientY: target.clientY,
+            ctrlKey: e.ctrlKey,
+            altKey: e.altKey,
+            shiftKey: e.shiftKey,
+            metaKey: e.metaKey,
+        });
+        e._constructed = true;
+        target.dispatchEvent(ev);
+    }
+};
 _.isBadAndroid =
     /Android /.test(window.navigator.appVersion) &&
     !/Chrome\/\d/.test(window.navigator.appVersion);
