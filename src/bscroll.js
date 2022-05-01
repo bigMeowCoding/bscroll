@@ -1,4 +1,5 @@
 const _ = require("./util/index.js");
+const Timeline = require("./util/timeline");
 const TOUCH_EVENT = 1;
 (function (window, document) {
     function BScroll(el, options) {
@@ -88,6 +89,10 @@ const TOUCH_EVENT = 1;
         },
         _addEvents() {
             this._handleEvents(_.addEvent);
+        },
+        _removeEvents: function () {
+            var eventOperation = _.removeEvent;
+            this._handleEvents(eventOperation);
         },
         _handleEvents(eventOperation) {
             const target = this.options.bindToWrapper ? this.wrapper : window;
@@ -409,14 +414,73 @@ const TOUCH_EVENT = 1;
                 event.apply(this, [].slice.call(arguments, 1));
             }
         },
-        scrollTo(x, y, time, ease) {
-            ease = ease || _.ease.bounce;
+        scrollBy: function (x, y, time, easing) {
+            x = this.x + x;
+            y = this.y + y;
+            time = time || 0;
+
+            this.scrollTo(x, y, time, easing);
+        },
+        scrollTo: function (x, y, time, easing) {
+            easing = easing || _.ease.bounce;
+
             this.isInTransition = this.options.useTransition && time > 0;
-            if (!time || (this.options.useTransition && ease.style)) {
-                this._transitionTimingFunction(ease.style);
+
+            if (!time || (this.options.useTransition && easing.style)) {
+                this._transitionTimingFunction(easing.style);
                 this._transitionTime(time);
                 this._translate(x, y);
+            } else {
+                this._animate(x, y, time, easing.fn);
             }
+        },
+        scrollToElement: function (el, time, offsetX, offsetY, easing) {
+            el = el.nodeType ? el : this.scroller.querySelector(el);
+
+            if (!el) return;
+
+            var pos = _.offset(el);
+
+            pos.left -= this.wrapperOffset.left;
+            pos.top -= this.wrapperOffset.top;
+
+            // if offsetX/Y are true we center the element to the screen
+            if (offsetX === true) {
+                offsetX = Math.round(
+                    el.offsetWidth / 2 - this.wrapper.offsetWidth / 2
+                );
+            }
+            if (offsetY === true) {
+                offsetY = Math.round(
+                    el.offsetHeight / 2 - this.wrapper.offsetHeight / 2
+                );
+            }
+
+            pos.left -= offsetX || 0;
+            pos.top -= offsetY || 0;
+
+            pos.left =
+                pos.left > 0
+                    ? 0
+                    : pos.left < this.maxScrollX
+                    ? this.maxScrollX
+                    : pos.left;
+            pos.top =
+                pos.top > 0
+                    ? 0
+                    : pos.top < this.maxScrollY
+                    ? this.maxScrollY
+                    : pos.top;
+
+            time =
+                time === undefined || time === null || time === "auto"
+                    ? Math.max(
+                          Math.abs(this.x - pos.left),
+                          Math.abs(this.y - pos.top)
+                      )
+                    : time;
+
+            this.scrollTo(pos.left, pos.top, time, easing);
         },
         enable() {
             this.enabled = true;
@@ -424,8 +488,26 @@ const TOUCH_EVENT = 1;
         disable() {
             this.enabled = false;
         },
-        _transitionTimingFunction: function (easing) {
-            this.scrollerStyle[_.style.transitionTimingFunction] = easing;
+        on: function (type, fn) {
+            if (!this._events[type]) {
+                this._events[type] = [];
+            }
+
+            this._events[type].push(fn);
+        },
+        off: function (type, fn) {
+            var _events = this._events[type];
+            if (_events) {
+                return;
+            }
+
+            var count = _events.length;
+
+            while (count--) {
+                if (_events[count] === fn) {
+                    _events[count] = undefined;
+                }
+            }
         },
         _translate(x, y) {
             if (this.options.useTransform) {
@@ -441,7 +523,41 @@ const TOUCH_EVENT = 1;
             this.x = x;
             this.y = y;
         },
-        _animate(destX, destY, duration, easingFn) {},
+        _animate: function (destX, destY, duration, easingFn) {
+            var startX = this.x;
+            var startY = this.y;
+            var me = this;
+            var timeline = new Timeline();
+
+            timeline.onenterframe = function (time) {
+                if (!me.isAnimating) {
+                    this.stop();
+                    return;
+                }
+
+                if (time > duration) {
+                    me.isAnimating = false;
+                    me._translate(destX, destY);
+
+                    if (
+                        !me.resetPosition(me.options.bounceTime, _.ease.bounce)
+                    ) {
+                        me._trigger("scrollEnd");
+                    }
+                    this.stop();
+                    return;
+                }
+                var now = time / duration;
+                var easing = easingFn(now);
+
+                var newX = (destX - startX) * easing + startX;
+                var newY = (destY - startY) * easing + startY;
+                me._translate(newX, newY);
+            };
+
+            this.isAnimating = true;
+            timeline.start();
+        },
         handleEvent: function (e) {
             switch (e.type) {
                 case "touchstart":
@@ -510,6 +626,16 @@ const TOUCH_EVENT = 1;
                 y: y,
             };
         },
+        _transitionTime(time) {
+            time = time || 0;
+            this.scrollerStyle[_.style.transitionDuration] = time + "ms";
+            if (!time && _.isBadAndroid) {
+                this.scrollerStyle[_.style.transitionDuration] = "0.001s";
+            }
+        },
+        _transitionTimingFunction: function (easing) {
+            this.scrollerStyle[_.style.transitionTimingFunction] = easing;
+        },
         _transitionEnd(e) {
             if (e.target !== this.scroller || !this.isIntransition) {
                 return;
@@ -520,13 +646,7 @@ const TOUCH_EVENT = 1;
                 this._trigger("scrollEnd");
             }
         },
-        _transitionTime(time) {
-            time = time || 0;
-            this.scrollerStyle[_.style.transitionDuration] = time + "ms";
-            if (!time && _.isBadAndroid) {
-                this.scrollerStyle[_.style.transitionDuration] = "0.001s";
-            }
-        },
+
         resetPosition(time, easeing) {
             time = time || 0;
             let x = this.x;
@@ -546,6 +666,11 @@ const TOUCH_EVENT = 1;
             }
             this.scrollTo(x, y, time, easeing);
             return true;
+        },
+        destroy: function () {
+            this._removeEvents();
+
+            this._trigger("destroy");
         },
     };
 
