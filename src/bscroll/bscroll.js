@@ -1,5 +1,5 @@
-const _ = require("./util/index.js");
-const Timeline = require("./util/timeline");
+const _ = require("../util");
+const Timeline = require("../util/timeline");
 const TOUCH_EVENT = 1;
 (function (window, document) {
     function BScroll(el, options) {
@@ -220,7 +220,7 @@ const TOUCH_EVENT = 1;
             if (!this.enabled || _.eventType[e.type] !== this.initiated) return;
 
             if (this.options.preventDefault) {
-                //TODO increase Android performance
+                // TODO increase Android performance
                 e.preventDefault();
             }
             const point = e.touches ? e.touches[0] : e;
@@ -356,7 +356,7 @@ const TOUCH_EVENT = 1;
             const duration = this.endTime - this.startTime;
             const absDistX = Math.abs(newX - this.startX);
             const absDistY = Math.abs(newY - this.startY);
-            //fastclick
+            // fastclick
             if (
                 this._events.flick &&
                 duration < 200 &&
@@ -681,6 +681,7 @@ const TOUCH_EVENT = 1;
 
     if (typeof module !== "undefined" && module.exports) {
         module.exports = BScroll;
+        // eslint-disable-next-line no-undef
     } else if (typeof define === "function" && define.amd) {
         return BScroll;
     } else {

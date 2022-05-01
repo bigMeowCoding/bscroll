@@ -90,12 +90,12 @@ _.momentum = function (
             : lowerMargin;
         duration =
             (options.swipeBounceTime || 1000) - (options.bounceTime || 400);
-        //distance = Math.abs(destination - current);
+        // distance = Math.abs(destination - current);
     } else if (destination > 0) {
         destination = wrapperSize ? (wrapperSize / 2.5) * (speed / 8) : 0;
         duration =
             (options.swipeBounceTime || 1000) - (options.bounceTime || 400);
-        //distance = Math.abs(current) + destination;
+        // distance = Math.abs(current) + destination;
     }
 
     return {
@@ -107,6 +107,7 @@ _.click = function (e) {
     var target = e.target;
 
     if (!/(SELECT|INPUT|TEXTAREA)/i.test(target.tagName)) {
+        // eslint-disable-next-line no-undef
         var ev = new MouseEvent("click", {
             bubbles: true,
             cancelable: true,
@@ -203,21 +204,21 @@ _.extend(_.eventType, {
 _.ease = {};
 
 _.extend(_.ease, {
-    //easeOutQuint
+    // easeOutQuint
     swipe: {
         style: "cubic-bezier(0.23, 1, 0.32, 1)",
         fn: function (t) {
             return 1 + --t * t * t * t * t;
         },
     },
-    //easeOutQuard
+    // easeOutQuard
     swipeBounce: {
         style: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
         fn: function (t) {
             return t * (2 - t);
         },
     },
-    //easeOutQuart
+    // easeOutQuart
     bounce: {
         style: "cubic-bezier(0.165, 0.84, 0.44, 1)",
         fn: function (t) {
