@@ -1,7 +1,7 @@
 {
     "name": "bscroll",
     "version": "0.1.0",
-    "main": "index.js",
+    "main": "build/bscroll.min.js",
     "repository": "git@github.com:bigMeowCoding/bscroll.git",
     "author": "zhouyijun <zhou495248579@hotmail.com>",
     "license": "MIT",

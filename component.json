@@ -1,0 +1,6 @@
+{
+    "name": "b-scroll",
+    "version": "0.0.12",
+    "main": "build/bscroll.js",
+    "description": "inspired by iscroll, and it has a better scroll perfermance"
+}
