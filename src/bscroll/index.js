@@ -1,10 +1,12 @@
 import EventEmitter from "../util/eventEmitter";
 import {
   addEvent,
+  ease,
   eventType,
   extend,
   hasPerspective,
   hasTouch,
+  offset,
   removeEvent,
   style,
 } from "../util";
@@ -51,7 +53,52 @@ export class BScroll extends EventEmitter {
     this.refresh();
     this.enable();
   }
-  refresh() {}
+  refresh() {
+    this.wrapperWidth =
+      parseInt(this.wrapper.style.width) || this.wrapper.clientWidth;
+    this.wrapperHeight =
+      parseInt(this.wrapper.style.height) || this.wrapper.clientHeight;
+    this.scrollerWidth =
+      parseInt(this.scrollerStyle.width) || this.scroller.clientWidth;
+    this.scrollerHeight =
+      parseInt(this.scrollerStyle.height) || this.scroller.clientHeight;
+    this.maxScrollX = this.wrapperWidth - this.scrollerWidth;
+    this.maxScrollY = this.wrapperHeight - this.scrollerHeight;
+    this.hasHorizontalScroll = this.options.scrollX && this.maxScrollX < 0;
+    this.hasVerticalScroll = this.options.scrollY && this.maxScrollY < 0;
+    if (!this.hasVerticalScroll) {
+      this.maxScrollY = 0;
+      this.scrollerHeight = this.wrapperHeight;
+    }
+    if (!this.hasHorizontalScroll) {
+      this.maxScrollX = 0;
+      this.scrollerWidth = this.wrapperWidth;
+    }
+    this.endTime = 0; //TODO 不知道干嘛
+    this.wrapperOffset = offset(this.wrapper);
+    this.trigger("refresh");
+    this.resetPosition();
+  }
+  resetPosition(time = 0, easeing = ease.bounce) {
+    let x = this.x;
+    if (!this.hasHorizontalScroll || x > 0) {
+      x = 0;
+    } else if (x < this.maxScrollX) {
+      x = this.maxScrollX;
+    }
+    let y = this.y;
+    if (!this.hasVerticalScroll || y > 0) {
+      y = 0;
+    } else if (y < this.maxScrollY) {
+      y = this.maxScrollY;
+    }
+    if (x === this.x && y === this.y) {
+      return false;
+    }
+    this.scrollTo(x, y, time, easeing);
+    return true;
+  }
+
   enable() {
     this.enabled = true;
   }
@@ -60,7 +107,15 @@ export class BScroll extends EventEmitter {
     this.y = 0;
     this._addEvents();
   }
-  scrollTo() {}
+  scrollTo(x, y, time = 0, easing = ease.bounce) {
+    this.isTransition =
+      this.options.useTransition && time > 0 && (x !== this.x || y !== this.y);
+    if (!time || this.options.useTransition) {
+      this._transitionTimingFunction(easing);
+      this._transitionTime(time);
+      this._translate(x, y);
+    }
+  }
 
   _addEvents() {
     this._handleEvents(addEvent);
@@ -176,6 +231,9 @@ export class BScroll extends EventEmitter {
   }
   _transitionTime(time = 0) {
     this.scroller[style.transitionDuration] = time + "ms";
+  }
+  _transitionTimingFunction(easing) {
+    this.scrollerStyle[style.transitionTimingFunction] = easing;
   }
   _translate(x, y) {
     if (this.options.useTransition) {
