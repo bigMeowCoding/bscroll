@@ -54,3 +54,15 @@ export const eventType = {
   mousemove: MOUSE_EVENT,
   mouseup: MOUSE_EVENT,
 };
+export function offset(el) {
+  let left, top;
+  while (el) {
+    left -= el.offsetLeft; // TODO 不明白为什么用-
+    top -= el.offsetTop;
+    el = el.offsetParent;
+  }
+  return {
+    left,
+    top,
+  };
+}
