@@ -1,25 +1,20 @@
 module.exports = {
-    root: true,
+  env: { browser: true, amd: true, jest: true, node: true, es6: true },
+  extends: ["standard", "plugin:prettier/recommended"],
+  plugins: ["html", "jest", "prettier"],
+  parserOptions: {
     parser: "babel-eslint",
-    parserOptions: {
-        sourceType: "module",
-    },
-    // https://github.com/feross/standard/blob/master/RULES.md#javascript-standard-style
-    extends: "standard",
-    // required to lint *.vue files
-    plugins: ["html"],
-    // add your custom rules here
-    rules: {
-        // allow paren-less arrow functions
-        "arrow-parens": 0,
-        // allow debugger during development
-        "no-debugger": process.env.NODE_ENV === "production" ? 2 : 0,
-        semi: ["error", "always"],
-        indent: 0,
-        quotes: "off",
-        "comma-dangle": "off",
-        "space-before-function-paren": 0,
-        "eol-last": 0,
-        "no-unused-vars": "warn",
-    },
+  },
+  rules: {
+    "prettier/prettier": "error",
+    "arrow-parens": 0,
+    "no-debugger": process.env.NODE_ENV === "production" ? 2 : 0,
+    semi: ["error", "always"],
+    curly: ["error", "all"],
+    quotes: "off",
+    "comma-dangle": "off",
+    "space-before-function-paren": 0,
+    "eol-last": 0,
+    "no-unused-vars": "warn",
+  },
 };
