@@ -176,7 +176,7 @@ export class BScroll extends EventEmitter {
   }
 
   _start(e) {
-    console.log(e);
+    console.log("startEvent", e);
     const _eventType = eventType[e.type];
     if (!this.enabled || (this.initiated && this.initiated !== _eventType)) {
       return;
@@ -205,10 +205,95 @@ export class BScroll extends EventEmitter {
     this.pointY = point.pageY;
     this.trigger("beforeScrollStart");
   }
+  _move(e) {
+    // console.log("moveEvent", e);
+    const _eventType = eventType[e.type];
+    if (!this.enabled || (this.initiated && this.initiated !== _eventType)) {
+      return;
+    }
+    if (this.options.preventDefault) {
+      e.preventDefault();
+    }
+    let point = e.touches ? e.touches[0] : e;
+    const pointX = point.pageX;
+    const pointY = point.pageY;
+    let deltaX = pointX - this.pointX;
+    let deltaY = pointY - this.pointY;
+    this.pointX = pointX;
+    this.pointY = pointY;
+    this.distX += deltaX;
+    this.distY += deltaY;
+    let absDistX = Math.abs(this.distX);
+    let absDistY = Math.abs(this.distY);
+    const timestamp = +new Date();
+    console.log(
+      timestamp - this.startTime > this.options.momentumLimitTime,
+      absDistY < this.options.momentumLimitDistance,
+      absDistX < this.options.momentumLimitDistance
+    );
+    if (
+      timestamp - this.startTime > this.options.momentumLimitTime &&
+      absDistY < this.options.momentumLimitDistance &&
+      absDistX < this.options.momentumLimitDistance
+    ) {
+      return;
+    }
+    if (!this.hasVerticalScroll) {
+      deltaY = 0;
+    }
+    if (!this.hasHorizontalScroll) {
+      deltaX = 0;
+    }
+    let newX = this.x + deltaX;
+    let newY = this.y + deltaY;
+    if (newX > 0 || newX < this.maxScrollX) {
+      newX = this.x + deltaX / 3;
+    }
+
+    if (newY > 0 || newY < this.maxScrollY) {
+      newY = this.y + deltaY / 3;
+    }
+    if (!this.moved) {
+      this.moved = true;
+      this.trigger("scrollStart");
+    }
+    this._translate(newX, newY);
+    if (timestamp - this.startTime > this.options.momentumLimitTime) {
+      this.startTime = timestamp;
+      this.startX = this.x;
+      this.startY = this.y;
+      if (this.options.probeType === 1) {
+        this.trigger("scroll", { x: this.x, y: this.y });
+      }
+    }
+    if (this.options.probeType > 1) {
+      this.trigger("scroll", { x: this.x, y: this.y });
+    }
+    let scrollLeft =
+      document.documentElement.scrollLeft ||
+      window.pageXOffset ||
+      document.body.scrollLeft;
+    let scrollTop =
+      document.documentElement.scrollTop ||
+      window.pageYOffset ||
+      document.body.scrollTop;
+    const pX = this.pageX - scrollLeft,
+      pY = this.pageY - scrollTop;
+    if (
+      pX >
+        document.documentElement.clientWidth -
+          this.options.momentumLimitDistance ||
+      pX < this.options.momentumLimitDistance ||
+      pY >
+        document.documentElement.clientHeight -
+          this.options.momentumLimitDistance ||
+      pY < this.options.momentumLimitDistance
+    ) {
+      this._end(e);
+    }
+  }
 
   _end(e) {}
-
-  _move(e) {}
   _resize() {}
   getComputedPosition() {
     let matrix = window.getComputedStyle(this.scroller, null);
