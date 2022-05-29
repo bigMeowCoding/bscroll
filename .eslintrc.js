@@ -1,9 +1,11 @@
 module.exports = {
   env: { browser: true, amd: true, jest: true, node: true, es6: true },
-  extends: ["standard", "plugin:prettier/recommended"],
+  extends: ["eslint:recommended", "prettier"],
   plugins: ["html", "jest", "prettier"],
   parserOptions: {
     parser: "babel-eslint",
+    sourceType: "module",
+    allowImportExportEverywhere: true,
   },
   rules: {
     "prettier/prettier": "error",
