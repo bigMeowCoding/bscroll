@@ -1,6 +1,5 @@
-import { BScroll } from "./bscroll/bscroll";
+const BScroll = require("./bscroll").BScroll;
 
 /* eslint-disable no-undef */
 BScroll.Version = __VERSION__;
-
-export default BScroll;
+module.exports = BScroll;

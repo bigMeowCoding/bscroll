@@ -1,6 +1,9 @@
 export function addEvent(el, type, fn, capture) {
   el.addEventListener(type, fn, !!capture);
 }
+export function removeEvent(el, type, fn, capture) {
+  el.removeEventListener(type, fn, !!capture);
+}
 const elStyle = document.createElement("div").style;
 const vendor = (function () {
   let transformNames = {
@@ -28,6 +31,7 @@ export function prefixStyle(style) {
 }
 
 let transform = prefixStyle("transform");
+export const hasTouch = "ontouchstart" in window;
 
 export const style = {
   transform,
@@ -36,4 +40,17 @@ export const style = {
   transitionDelay: prefixStyle("transitionDelay"),
   transformOrigin: prefixStyle("transformOrigin"),
   transitionEnd: prefixStyle("transitionEnd"),
+};
+export const hasPerspective = prefixStyle("perspective") in elStyle;
+
+const TOUCH_EVENT = 1;
+const MOUSE_EVENT = 2;
+export const eventType = {
+  touchstart: TOUCH_EVENT,
+  touchmove: TOUCH_EVENT,
+  touchend: TOUCH_EVENT,
+
+  mousedown: MOUSE_EVENT,
+  mousemove: MOUSE_EVENT,
+  mouseup: MOUSE_EVENT,
 };
