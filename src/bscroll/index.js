@@ -6,6 +6,7 @@ import {
   extend,
   hasPerspective,
   hasTouch,
+  momentum,
   offset,
   removeEvent,
   style,
@@ -111,7 +112,7 @@ export class BScroll extends EventEmitter {
     this.isTransition =
       this.options.useTransition && time > 0 && (x !== this.x || y !== this.y);
     if (!time || this.options.useTransition) {
-      this._transitionTimingFunction(easing);
+      this._transitionTimingFunction(easing.style);
       this._transitionTime(time);
       this._translate(x, y);
     }
@@ -191,7 +192,7 @@ export class BScroll extends EventEmitter {
     this._transitionTime();
     this.startTime = +new Date();
     if (this.options.useTransition && this.isTransition) {
-      this.isTransition = true;
+      this.isTransition = false;
       let pos = this.getComputedPosition();
       this._translate(Math.round(pos.x), Math.round(pos.y)); // 要四舍五入
       this.trigger("scrollEnd");
@@ -199,16 +200,15 @@ export class BScroll extends EventEmitter {
     let point = e.touches ? e.touches[0] : e;
     this.startX = this.x;
     this.startY = this.y;
-    this.absStartX = Math.abs(this.startX);
-    this.absStartY = Math.abs(this.startY);
     this.pointX = point.pageX;
     this.pointY = point.pageY;
     this.trigger("beforeScrollStart");
   }
   _move(e) {
     // console.log("moveEvent", e);
+    console.log("move=====");
     const _eventType = eventType[e.type];
-    if (!this.enabled || (this.initiated && this.initiated !== _eventType)) {
+    if (!this.enabled || this.initiated !== _eventType) {
       return;
     }
     if (this.options.preventDefault) {
@@ -226,11 +226,6 @@ export class BScroll extends EventEmitter {
     let absDistX = Math.abs(this.distX);
     let absDistY = Math.abs(this.distY);
     const timestamp = +new Date();
-    console.log(
-      timestamp - this.startTime > this.options.momentumLimitTime,
-      absDistY < this.options.momentumLimitDistance,
-      absDistX < this.options.momentumLimitDistance
-    );
     if (
       timestamp - this.startTime > this.options.momentumLimitTime &&
       absDistY < this.options.momentumLimitDistance &&
@@ -277,23 +272,99 @@ export class BScroll extends EventEmitter {
       document.documentElement.scrollTop ||
       window.pageYOffset ||
       document.body.scrollTop;
-    const pX = this.pageX - scrollLeft,
-      pY = this.pageY - scrollTop;
+    const pX = this.pointX - scrollLeft,
+      pY = this.pointY - scrollTop;
     if (
       pX >
         document.documentElement.clientWidth -
           this.options.momentumLimitDistance ||
       pX < this.options.momentumLimitDistance ||
+      pY < this.options.momentumLimitDistance ||
       pY >
         document.documentElement.clientHeight -
-          this.options.momentumLimitDistance ||
-      pY < this.options.momentumLimitDistance
+          this.options.momentumLimitDistance
     ) {
       this._end(e);
     }
   }
 
-  _end(e) {}
+  _end(e) {
+    console.log("end=====");
+    const _eventType = eventType[e.type];
+    if (!this.enabled || this.initiated !== _eventType) {
+      return;
+    }
+    this.initiated = false;
+
+    if (this.options.preventDefault) {
+      e.preventDefault();
+    }
+    // 处理越界
+    if (this.resetPosition(this.options.bounceTime, ease.bounce)) {
+      return;
+    }
+    this.isTransition = false;
+    let newX = Math.round(this.x);
+    let newY = Math.round(this.y);
+    if (!this.moved) {
+      this.trigger("scrollCancel");
+      return;
+    }
+    this.scrollTo(newX, newY);
+
+    this.endTime = +new Date();
+    let duration = this.endTime - this.startTime;
+    let absDistX = Math.abs(newX - this.startX);
+    let absDistY = Math.abs(newY - this.startY);
+    let time = 0;
+    if (
+      this.options.momentum &&
+      duration < this.options.momentumLimitTime &&
+      (absDistY > this.options.momentumLimitDistance ||
+        absDistX > this.options.momentumLimitDistance)
+    ) {
+      console.log("momentum");
+      let momentumX = this.hasHorizontalScroll
+        ? momentum(
+            this.x,
+            this.startX,
+            duration,
+            this.maxScrollX,
+            this.options.bounce ? this.wrapperWidth : 0,
+            this.options
+          )
+        : { destination: newX, duration: 0 };
+      let momentumY = this.hasVerticalScroll
+        ? momentum(
+            this.y,
+            this.startY,
+            duration,
+            this.maxScrollY,
+            this.options.bounce ? this.wrapperHeight : 0,
+            this.options
+          )
+        : { destination: newY, duration: 0 };
+      console.log(momentumX, momentumY);
+      newX = momentumX.destination;
+      newY = momentumY.destination;
+      time = Math.max(momentumY.duration, momentumX.duration);
+      this.isTransition = 1; // TODO 为什么用1
+    }
+    let easing = ease.swipe; // 切换为swipe
+    if (newY !== this.y || newX !== this.x) {
+      if (
+        newX > 0 ||
+        newY > 0 ||
+        newX < this.maxScrollX ||
+        newY < this.maxScrollY
+      ) {
+        easing = ease.swipeBounce;
+      }
+      this.scrollTo(newX, newY, time, easing);
+      return; //让transitionEnd中触发scrollend事件
+    }
+    this.trigger("scrollEnd");
+  }
   _resize() {}
   getComputedPosition() {
     let matrix = window.getComputedStyle(this.scroller, null);
@@ -315,7 +386,7 @@ export class BScroll extends EventEmitter {
     };
   }
   _transitionTime(time = 0) {
-    this.scroller[style.transitionDuration] = time + "ms";
+    this.scrollerStyle[style.transitionDuration] = time + "ms";
   }
   _transitionTimingFunction(easing) {
     this.scrollerStyle[style.transitionTimingFunction] = easing;
@@ -328,5 +399,14 @@ export class BScroll extends EventEmitter {
     this.x = x;
     this.y = y;
   }
-  _transitionEnd(e) {}
+  _transitionEnd(e) {
+    if (e.target !== this.scroller || !this.isTransition) {
+      return;
+    }
+    this._transitionTime();
+    if (!this.resetPosition(this.options.bounceTime, ease.bounce)) {
+      this.isTransition = false;
+      this.trigger("scrollEnd");
+    }
+  }
 }
