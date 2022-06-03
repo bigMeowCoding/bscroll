@@ -8,6 +8,7 @@ import {
     hasTouch,
     momentum,
     offset,
+    prepend,
     removeEvent,
     style,
 } from "../util";
@@ -53,8 +54,27 @@ export class BScroll extends EventEmitter {
                 ? " translateZ(0)"
                 : "";
         this._init();
+        if (this.options.snap) {
+            this._initSnap();
+        }
         this.refresh();
+        if (!this.options.snap) {
+            this.scrollTo(this.options.startX, this.options.startY);
+        }
         this.enable();
+    }
+    _initSnap() {
+        this.currentPage = {};
+        if (this.options.snapLoop) {
+            const childrens = this.scroller.children;
+            if (childrens.length > 0) {
+                prepend(
+                    childrens[childrens.length - 1].cloneNode(true),
+                    childrens[0]
+                );
+                this.scroller.appendChild(childrens[1].cloneNode(true));
+            }
+        }
     }
     refresh() {
         this.wrapperWidth =

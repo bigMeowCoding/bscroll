@@ -66,3 +66,13 @@ export function offset(el) {
         top,
     };
 }
+export function prepend(el, target) {
+    if (target.firstChild) {
+        before(el, target);
+    } else {
+        target.appendChild(el);
+    }
+}
+export function before(el, target) {
+    target.parentNode.insertBefore(el, target);
+}
