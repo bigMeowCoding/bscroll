@@ -1,5 +1,5 @@
-const BScroll = require("./bscroll").BScroll;
+import { BScroll } from "./bscroll/scroll";
 
-/* eslint-disable no-undef */
+// eslint-disable-next-line no-undef
 BScroll.Version = __VERSION__;
-module.exports = BScroll;
+export default BScroll;
