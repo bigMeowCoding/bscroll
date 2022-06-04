@@ -288,6 +288,24 @@ export class BScroll extends EventEmitter {
         this.scrollTo(x, y, time, easeing);
         return true;
     }
+    next(time, easing) {
+        let pageX = this.currentPage.pageX;
+        const pageY = this.currentPage.pageY;
+        pageX += 1;
+        if (pageX > this.pages.length - 1) {
+            pageX = 0;
+        }
+        this.goToPage(pageX, pageY, time, easing);
+    }
+    prev(time, easing) {
+        let pageX = this.currentPage.pageX;
+        const pageY = this.currentPage.pageY;
+        pageX -= 1;
+        if (pageX < 0) {
+            pageX = this.pages.length - 1;
+        }
+        this.goToPage(pageX, pageY, time, easing);
+    }
     enable() {
         this.enabled = true;
     }

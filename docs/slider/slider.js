@@ -90,8 +90,7 @@ Slider.prototype = {
             return;
         }
         var that = this;
-        console.log(that.slider);
-        var page = that.slider.getCurrentPage().pageX;
+        that.slider.getCurrentPage().pageX;
 
         setInterval(function () {
             that.slider.next();
@@ -104,5 +103,5 @@ new Slider({
     inner: ".content",
     dots: ".dots",
     speed: 400,
-    auto: false,
+    auto: 2000,
 });
