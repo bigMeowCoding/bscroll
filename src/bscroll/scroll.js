@@ -66,15 +66,182 @@ export class BScroll extends EventEmitter {
     _initSnap() {
         this.currentPage = {};
         if (this.options.snapLoop) {
-            const childrens = this.scroller.children;
-            if (childrens.length > 0) {
+            const children = this.scroller.children;
+            if (children.length > 0) {
                 prepend(
-                    childrens[childrens.length - 1].cloneNode(true),
-                    childrens[0]
+                    children[children.length - 1].cloneNode(true),
+                    children[0]
                 );
-                this.scroller.appendChild(childrens[1].cloneNode(true));
+                this.scroller.appendChild(children[1].cloneNode(true));
             }
         }
+        this.on("refresh", () => {
+            this.pages = [];
+            if (
+                !this.wrapperWidth ||
+                !this.wrapperHeight ||
+                !this.scrollerWidth ||
+                !this.scrollerHeight
+            ) {
+                return;
+            }
+            let stepX = this.wrapperWidth;
+            let stepY = this.wrapperHeight;
+            let x = 0;
+            let y;
+            let cx;
+            let cy;
+            let i = 0;
+            let l;
+            cx = Math.floor(stepX / 2);
+            cy = Math.floor(stepY / 2);
+            while (x > -this.scrollerWidth) {
+                this.pages[i] = [];
+                l = 0;
+                y = 0;
+                while (y > -this.scrollerHeight) {
+                    this.pages[i][l] = {
+                        x: Math.max(this.maxScrollX, x),
+                        y: Math.max(this.maxScrollY, y),
+                        width: stepX,
+                        height: stepY,
+                        cx: x - cx,
+                        cy: y - cy,
+                    };
+                    y -= stepY;
+                    l++;
+                }
+                x -= stepX;
+                i++;
+            }
+
+            let initPage = this.options.snapLoop ? 1 : 0;
+            this.goToPage(
+                this.currentPage.pageX || initPage,
+                this.currentPage.pageY || 0,
+                0
+            );
+            if (this.options.snapThreshold % 1 === 0) {
+                this.snapThresholdX = this.options.snapThreshold;
+                this.snapThresholdY = this.options.snapThreshold;
+            } else {
+                this.snapThresholdX = Math.round(
+                    this.pages[this.currentPage.pageX][this.currentPage.pageY]
+                        .width * this.options.snapThreshold
+                );
+                this.snapThresholdY = Math.round(
+                    this.pages[this.currentPage.pageX][this.currentPage.pageY]
+                        .height * this.options.snapThreshold
+                );
+            }
+        });
+        this.on("scrollEnd", () => {
+            if (this.options.snapLoop) {
+                if (this.currentPage.pageX === 0) {
+                    this.goToPage(
+                        this.pages.length - 2,
+                        this.currentPage.pageY,
+                        0
+                    );
+                }
+                if (this.currentPage.pageX === this.pages.length - 1) {
+                    this.goToPage(1, this.currentPage.pageY, 0);
+                }
+            }
+        });
+    }
+    getCurrentPage() {
+        return this.options.snap && this.currentPage;
+    }
+    goToPage(x, y, time, easing = ease.bounce) {
+        if (x >= this.pages.length - 1) {
+            x = this.pages.length - 1;
+        } else if (x < 0) {
+            x = 0;
+        }
+        if (y >= this.pages[x].length - 1) {
+            y = this.pages[x].length - 1;
+        } else if (y < 0) {
+            y = 0;
+        }
+        let posX = this.pages[x][y].x;
+        let posY = this.pages[x][y].y;
+        time =
+            time === undefined
+                ? this.options.snapSpeed ||
+                  Math.max(
+                      Math.min(1000, Math.abs(posX - this.x)),
+                      Math.min(1000, Math.abs(posY - this.y)),
+                      300
+                  )
+                : time;
+        this.currentPage = {
+            x: posX,
+            y: posY,
+            pageX: x,
+            pageY: y,
+        };
+        this.scrollTo(posX, posY, time, easing);
+    }
+    _nearestSnap(x, y) {
+        if (!this.pages.length) {
+            return { x: 0, y: 0, pageX: 0, pageY: 0 };
+        }
+
+        if (
+            Math.abs(x - this.absStartX) < this.snapThresholdX &&
+            Math.abs(y - this.absStartY) < this.snapThresholdY
+        ) {
+            return this.currentPage;
+        }
+        if (x > 0) {
+            x = 0;
+        } else if (x < this.maxScrollX) {
+            x = this.maxScrollX;
+        }
+        if (y > 0) {
+            y = 0;
+        } else if (y < this.maxScrollY) {
+            y = this.maxScrollY;
+        }
+        let i = 0;
+        for (; i < this.pages.length; i++) {
+            if (x >= this.pages[i][0].cx) {
+                x = this.pages[i][0].x;
+                break;
+            }
+        }
+        let m = 0;
+        for (; m < this.pages[i].length; m++) {
+            if (y >= this.pages[i][m].cy) {
+                y = this.pages[i][m].y;
+                break;
+            }
+        }
+        if (i === this.currentPage.pageX) {
+            i += this.directionX;
+            if (i < 0) {
+                i = 0;
+            } else if (i > this.pages.length - 1) {
+                i = this.pages.length - 1;
+            }
+            x = this.pages[i][0].x;
+        }
+        if (m === this.currentPage.pageY) {
+            m += this.directionY;
+            if (m < 0) {
+                m = 0;
+            } else if (m > this.pages[i].length - 1) {
+                m = this.pages[i].length - 1;
+            }
+            y = this.pages[i][m].y;
+        }
+        return {
+            x,
+            y,
+            pageX: i,
+            pageY: m,
+        };
     }
     refresh() {
         this.wrapperWidth =
@@ -121,7 +288,6 @@ export class BScroll extends EventEmitter {
         this.scrollTo(x, y, time, easeing);
         return true;
     }
-
     enable() {
         this.enabled = true;
     }
@@ -227,6 +393,8 @@ export class BScroll extends EventEmitter {
         let point = e.touches ? e.touches[0] : e;
         this.startX = this.x;
         this.startY = this.y;
+        this.absStartX = this.startX;
+        this.absStartY = this.startY;
         this.pointX = point.pageX;
         this.pointY = point.pageY;
         this.trigger("beforeScrollStart");
@@ -339,6 +507,11 @@ export class BScroll extends EventEmitter {
         }
         this.scrollTo(newX, newY);
 
+        let deltaX = newX - this.absStartX;
+        let deltaY = newY - this.absStartY;
+        this.directionX = deltaX > 0 ? -1 : deltaX < 0 ? 1 : 0;
+        this.directionY = deltaY > 0 ? -1 : deltaY < 0 ? 1 : 0;
+
         this.endTime = +new Date();
         let duration = this.endTime - this.startTime;
         let absDistX = Math.abs(newX - this.startX);
@@ -350,7 +523,6 @@ export class BScroll extends EventEmitter {
             (absDistY > this.options.momentumLimitDistance ||
                 absDistX > this.options.momentumLimitDistance)
         ) {
-            console.log("momentum");
             let momentumX = this.hasHorizontalScroll
                 ? momentum(
                       this.x,
@@ -371,13 +543,31 @@ export class BScroll extends EventEmitter {
                       this.options
                   )
                 : { destination: newY, duration: 0 };
-            console.log(momentumX, momentumY);
             newX = momentumX.destination;
             newY = momentumY.destination;
             time = Math.max(momentumY.duration, momentumX.duration);
             this.isTransition = 1; // TODO 为什么用1
         }
         let easing = ease.swipe; // 切换为swipe
+        if (this.options.snap) {
+            let snap = this._nearestSnap(newX, newY);
+            console.log("snap=======", snap);
+            this.currentPage = snap;
+            time =
+                this.options.snapSpeed ||
+                Math.max(
+                    Math.max(
+                        Math.min(Math.abs(newX - snap.x), 1000),
+                        Math.min(Math.abs(newY - snap.y), 1000)
+                    ),
+                    300
+                );
+            newX = snap.x;
+            newY = snap.y;
+            this.directionX = 0;
+            this.directionY = 0;
+            easing = ease.bounce;
+        }
         if (newY !== this.y || newX !== this.x) {
             if (
                 newX > 0 ||

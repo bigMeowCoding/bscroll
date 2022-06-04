@@ -104,5 +104,5 @@ new Slider({
     inner: ".content",
     dots: ".dots",
     speed: 400,
-    auto: 2000,
+    auto: false,
 });
